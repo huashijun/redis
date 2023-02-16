@@ -1,6 +1,9 @@
 # 应用
 SpringBoot2+Lettuce连接池方式连接Redis单机/主备/Proxy集群。
 
+# 技术思路
+![技术思路](https://github.com/huashijun/huashijun.github.io/raw/master/redis-starter.jpg)
+
 # 依赖
 ```
 <dependency>
