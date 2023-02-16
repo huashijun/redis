@@ -156,3 +156,9 @@ public void hashDecrease() {
     System.out.println(eee);
 }
 ```
+
+# 反馈
+如果该组件有问题请留言反馈，受到反馈后会及时修复问题
+
+# 点赞
+如果使用该组件觉得还不错，请留下您的足迹，点个赞
