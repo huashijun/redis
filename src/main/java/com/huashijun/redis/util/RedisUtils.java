@@ -70,7 +70,6 @@ public class RedisUtils {
         return redisTemplate.delete(keys);
     }
 
-    //============================String=============================
     /**
      * 普通缓存获取
      * @param key 键
@@ -117,7 +116,6 @@ public class RedisUtils {
         return redisTemplate.opsForValue().increment(key, delta);
     }
 
-    //================================Map=================================
     /**
      * 获取某个hash Key的某个键对应的值
      * @param key 键 不能为null
@@ -222,7 +220,6 @@ public class RedisUtils {
         return redisTemplate.opsForHash().increment(key, item, delta);
     }
 
-    //============================set=============================
     /**
      * 根据key获取Set中的所有值
      * @param key 键
@@ -317,8 +314,6 @@ public class RedisUtils {
         return redisTemplate.opsForSet().union(firstKey,secondKey);
     }
 
-    //===============================ZSet================================
-
     /**
      * 在 ZSet中插入一条数据
      * @param key   键
@@ -373,8 +368,6 @@ public class RedisUtils {
     public Long zSetDeleteByScore(String key, Double startScore, Double endScore) {
         return redisTemplate.opsForZSet().removeRangeByScore(key, startScore, endScore);
     }
-
-    //===============================list=================================
 
     /**
      * 获取list缓存的内容

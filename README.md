@@ -1,8 +1,11 @@
 # 应用
-SpringBoot2+Lettuce连接池方式连接Redis单机/主备/Proxy集群。
+~~SpringBoot2+Lettuce连接池方式连接Redis单机/主备/Proxy集群。~~
+
+SpringBoot2+Lettuce连接池方式连接Redis单机/哨兵/主从集群
 
 # 技术思路
 ![技术思路](https://github.com/huashijun/huashijun.github.io/raw/master/redis-starter.jpg)
+![技术思路](https://raw.githubusercontent.com/huashijun/huashijun.github.io/master/redis-starter1.jpg)
 
 # 依赖
 ```
@@ -12,9 +15,17 @@ SpringBoot2+Lettuce连接池方式连接Redis单机/主备/Proxy集群。
     <version>1.0.0</version>
 </dependency>
 ```
-
+```
+#最新
+<dependency>
+    <groupId>io.github.huashijun</groupId>
+    <artifactId>redis-spring-boot-starter</artifactId>
+    <version>1.1.0</version>
+</dependency>
+```
 # 配置
 ```
+#单机配置
 spring:
   redis:
     database: 6  #Redis索引0~15，默认为0
@@ -30,7 +41,43 @@ spring:
         min-idle: 0     #连接池中的最小空闲连接
     timeout: 10000    #连接超时时间（毫秒）
 ```
-
+```
+#主从集群配置
+spring:
+  redis:
+    database: 6
+    password: 123456
+    lettuce:
+      shutdown-timeout: 1000
+      pool:
+        max-active: 8
+        max-wait: -1
+        max-idle: 5
+        min-idle: 0
+    cluster:
+      nodes:
+        - 127.0.0.1:8080
+        - 127.0.0.1:8081
+        - 127.0.0.1:8082
+      max-redirects: 3
+```
+```
+#哨兵集群配置
+spring:
+  redis:
+    database: 6
+    password: 123456
+    lettuce:
+      shutdown-timeout: 1000
+      pool:
+        max-active: 8
+        max-wait: -1
+        max-idle: 5
+        min-idle: 0
+    sentinel:
+      master:
+      nodes:
+```
 # 注入
 ```
 @Autowired
