@@ -6,56 +6,32 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huashijun.redis.util.RedisUtils;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.connection.RedisPassword;
-import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
+import org.springframework.data.redis.connection.*;
 import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettucePoolingClientConfiguration;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
-import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author huashijun
  */
 @Configuration
+@EnableConfigurationProperties(RedisProperties.class)
+@ConditionalOnClass(RedisUtils.class)
 public class RedisConfig {
-
-    @Value("${spring.redis.database}")
-    private int database;
-
-    @Value("${spring.redis.host}")
-    private String host;
-
-    @Value("${spring.redis.password}")
-    private String password;
-
-    @Value("${spring.redis.port}")
-    private int port;
-
-    @Value("${spring.redis.timeout}")
-    private long timeout;
-
-    @Value("${spring.redis.lettuce.shutdown-timeout}")
-    private long shutDownTimeout;
-
-    @Value("${spring.redis.lettuce.pool.max-idle}")
-    private int maxIdle;
-
-    @Value("${spring.redis.lettuce.pool.min-idle}")
-    private int minIdle;
-
-    @Value("${spring.redis.lettuce.pool.max-active}")
-    private int maxActive;
-
-    @Value("${spring.redis.lettuce.pool.max-wait}")
-    private long maxWait;
 
     @Bean
     @ConditionalOnMissingBean
@@ -85,29 +61,90 @@ public class RedisConfig {
 
     @Bean
     @ConditionalOnMissingBean
-    public LettuceConnectionFactory lettuceConnectionFactory() {
+    public LettuceConnectionFactory lettuceConnectionFactory(RedisProperties properties) {
+        // 连接池通用配置
         GenericObjectPoolConfig genericObjectPoolConfig = new GenericObjectPoolConfig();
-        genericObjectPoolConfig.setMaxIdle(maxIdle);
-        genericObjectPoolConfig.setMinIdle(minIdle);
-        genericObjectPoolConfig.setMaxTotal(maxActive);
-        genericObjectPoolConfig.setMaxWaitMillis(maxWait);
-        genericObjectPoolConfig.setTimeBetweenEvictionRunsMillis(100);
-        RedisStandaloneConfiguration redisStandaloneConfiguration = new RedisStandaloneConfiguration();
-        redisStandaloneConfiguration.setDatabase(database);
-        redisStandaloneConfiguration.setHostName(host);
-        redisStandaloneConfiguration.setPort(port);
-        redisStandaloneConfiguration.setPassword(RedisPassword.of(password));
+        genericObjectPoolConfig.setMaxIdle(properties.getLettuce().getPool().getMaxIdle());
+        genericObjectPoolConfig.setMinIdle(properties.getLettuce().getPool().getMinIdle());
+        genericObjectPoolConfig.setMaxTotal(properties.getLettuce().getPool().getMaxActive());
+        genericObjectPoolConfig.setMaxWaitMillis(properties.getLettuce().getPool().getMaxWait().toMillis());
+
         LettuceClientConfiguration clientConfig = LettucePoolingClientConfiguration.builder()
-                .commandTimeout(Duration.ofMillis(timeout))
-                .shutdownTimeout(Duration.ofMillis(shutDownTimeout))
+                .commandTimeout(properties.getTimeout())
+                .shutdownTimeout(properties.getLettuce().getShutdownTimeout())
                 .poolConfig(genericObjectPoolConfig)
                 .build();
-        return new LettuceConnectionFactory(redisStandaloneConfiguration, clientConfig);
+        //LettuceConnectionFactory连接工厂
+        LettuceConnectionFactory lettuceConnectionFactory;
+        RedisSentinelConfiguration sentinelConfig = getSentinelConfiguration(properties);
+        RedisClusterConfiguration clusterConfiguration = getClusterConfiguration(properties);
+        if (sentinelConfig != null) {
+            lettuceConnectionFactory = new LettuceConnectionFactory(sentinelConfig, clientConfig);
+        } else if (clusterConfiguration != null) {
+            lettuceConnectionFactory = new LettuceConnectionFactory(clusterConfiguration, clientConfig);
+            lettuceConnectionFactory.setDatabase(properties.getDatabase());
+        } else {
+            RedisStandaloneConfiguration redisStandaloneConfiguration = new RedisStandaloneConfiguration();
+            redisStandaloneConfiguration.setDatabase(properties.getDatabase());
+            redisStandaloneConfiguration.setHostName(properties.getHost());
+            redisStandaloneConfiguration.setPort(properties.getPort());
+            redisStandaloneConfiguration.setPassword(RedisPassword.of(properties.getPassword()));
+            lettuceConnectionFactory = new LettuceConnectionFactory(redisStandaloneConfiguration, clientConfig);
+        }
+        return lettuceConnectionFactory;
     }
 
     @Bean
     @ConditionalOnMissingBean
-    RedisUtils redisUtils(@Qualifier("redisTemplate") RedisTemplate<String,Object> redisTemplate){
+    public RedisUtils redisUtils(@Qualifier("redisTemplate") RedisTemplate<String,Object> redisTemplate){
         return new RedisUtils(redisTemplate);
+    }
+
+    /**
+     * 配置主从集群信息
+     * @param properties redis配置信息
+     * @return 主从集群信息
+     */
+    private RedisClusterConfiguration getClusterConfiguration(RedisProperties properties) {
+        RedisProperties.Cluster cluster = properties.getCluster();
+        if (cluster != null) {
+            RedisClusterConfiguration config = new RedisClusterConfiguration(cluster.getNodes());
+            if (properties.getPassword() != null){
+                config.setPassword(RedisPassword.of(properties.getPassword()));
+            }
+            if (cluster.getMaxRedirects() != null) {
+                config.setMaxRedirects(cluster.getMaxRedirects());
+            }
+            return config;
+        }
+        return null;
+    }
+
+    /**
+     * 配置哨兵集群信息
+     * @param properties redis配置信息
+     * @return 哨兵集群信息
+     */
+    private RedisSentinelConfiguration getSentinelConfiguration(RedisProperties properties) {
+        RedisProperties.Sentinel sentinel = properties.getSentinel();
+        if (sentinel != null) {
+            RedisSentinelConfiguration config = new RedisSentinelConfiguration();
+            config.master(sentinel.getMaster());
+            //创建哨兵集群节点
+            List<RedisNode> nodes = new ArrayList<>();
+            for (String node: sentinel.getNodes()) {
+                String[] parts = StringUtils.split(node, ":");
+                assert parts != null;
+                Assert.state(parts.length == 2, "redis哨兵地址配置不合法！");
+                nodes.add(new RedisNode(parts[0], Integer.parseInt(parts[1])));
+            }
+            config.setSentinels(nodes);
+            if (properties.getPassword() != null){
+                config.setPassword(RedisPassword.of(properties.getPassword()));
+            }
+            config.setDatabase(properties.getDatabase());
+            return config;
+        }
+        return null;
     }
 }
