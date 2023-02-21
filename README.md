@@ -1,11 +1,17 @@
 # 应用
 ~~SpringBoot2+Lettuce连接池方式连接Redis单机/主备/Proxy集群。~~
 
-SpringBoot2+Lettuce连接池方式连接Redis单机/哨兵/主从集群
+~~SpringBoot2+Lettuce连接池方式连接Redis单机/主从复制/哨兵sentinel模式/Cluster集群模式~~
+
+SpringBoot2+Lettuce连接池方式/Redisson+连接 +Redis单机/主从复制/哨兵sentinel模式/Cluster集群模式
 
 # 技术思路
 ![技术思路](https://github.com/huashijun/huashijun.github.io/raw/master/redis-starter.jpg)
 ![技术思路](https://raw.githubusercontent.com/huashijun/huashijun.github.io/master/redis-starter1.jpg)
+![技术思路](https://github.com/huashijun/huashijun.github.io/raw/master/redis-starter2.jpg)
+
+# boot版本
+2.0.x/2.1.x/2.2.x/2.3.x/2.4.x/2.5.x/2.6.x
 
 # 依赖
 ```
@@ -16,16 +22,24 @@ SpringBoot2+Lettuce连接池方式连接Redis单机/哨兵/主从集群
 </dependency>
 ```
 ```
-#最新
 <dependency>
     <groupId>io.github.huashijun</groupId>
     <artifactId>redis-spring-boot-starter</artifactId>
     <version>1.1.0</version>
 </dependency>
 ```
+```
+#最新
+<dependency>
+    <groupId>io.github.huashijun</groupId>
+    <artifactId>redis-spring-boot-starter</artifactId>
+    <version>1.2.0</version>
+</dependency>
+```
+
 # 配置
 ```
-#单机配置
+#redis单机配置
 spring:
   redis:
     database: 6  #Redis索引0~15，默认为0
@@ -42,7 +56,7 @@ spring:
     timeout: 10000    #连接超时时间（毫秒）
 ```
 ```
-#主从集群配置
+#redis集群配置
 spring:
   redis:
     database: 6
@@ -62,7 +76,7 @@ spring:
       max-redirects: 3
 ```
 ```
-#哨兵集群配置
+#redis哨兵配置/主从配置
 spring:
   redis:
     database: 6
@@ -78,10 +92,177 @@ spring:
       master:
       nodes:
 ```
+```
+#redisson.yml
+#redisson Cluster mode 集群模式
+clusterServersConfig:
+  idleConnectionTimeout: 10000 #连接空闲超时，单位：毫秒
+  connectTimeout: 10000 #连接超时，单位：毫秒
+  timeout: 3000 #命令等待超时，单位：毫秒
+  retryAttempts: 3 #命令失败重试次数
+  retryInterval: 1500   #命令重试发送时间间隔，单位：毫秒
+  failedSlaveReconnectionInterval: 3000
+  failedSlaveCheckInterval: 60000
+  password: null    #密码
+  subscriptionsPerConnection: 5 #单个连接最大订阅数量
+  clientName: null  #客户端名称
+  loadBalancer: !<org.redisson.connection.balancer.RoundRobinLoadBalancer> {} #负载均衡算法类
+  subscriptionConnectionMinimumIdleSize: 1 #从节点发布和订阅连接的最小空闲连接数
+  subscriptionConnectionPoolSize: 50 #从节点发布和订阅连接池大小
+  slaveConnectionMinimumIdleSize: 24 #从节点最小空闲连接数
+  slaveConnectionPoolSize: 64 #从节点连接池大小
+  masterConnectionMinimumIdleSize: 24 #masterConnectionMinimumIdleSize
+  masterConnectionPoolSize: 64 #主节点连接池大小
+  readMode: "SLAVE" #读取操作的负载均衡模式
+  subscriptionMode: "SLAVE" #订阅操作的负载均衡模式
+  nodeAddresses: #添加节点地址
+  - "redis://127.0.0.1:7004"
+  - "redis://127.0.0.1:7001"
+  - "redis://127.0.0.1:7000"
+  scanInterval: 1000 #集群扫描间隔时间
+  pingConnectionInterval: 30000 #ping连接间隔
+  keepAlive: false 
+  tcpNoDelay: true
+threads: 16
+nettyThreads: 32
+codec: !<org.redisson.codec.JsonJacksonCodec> {}
+transportMode: "NIO"
+```
+```
+#redisson.yml
+#redisson Replicated mode 云托管模式
+replicatedServersConfig:
+  idleConnectionTimeout: 10000
+  connectTimeout: 10000
+  timeout: 3000
+  retryAttempts: 3
+  retryInterval: 1500
+  failedSlaveReconnectionInterval: 3000
+  failedSlaveCheckInterval: 60000
+  password: null
+  subscriptionsPerConnection: 5
+  clientName: null
+  loadBalancer: !<org.redisson.connection.balancer.RoundRobinLoadBalancer> {}
+  subscriptionConnectionMinimumIdleSize: 1
+  subscriptionConnectionPoolSize: 50
+  slaveConnectionMinimumIdleSize: 24
+  slaveConnectionPoolSize: 64
+  masterConnectionMinimumIdleSize: 24
+  masterConnectionPoolSize: 64
+  readMode: "SLAVE"
+  subscriptionMode: "SLAVE"
+  nodeAddresses:
+  - "redis://redishost1:2812"
+  - "redis://redishost2:2815"
+  - "redis://redishost3:2813"
+  scanInterval: 1000
+  monitorIPChanges: false
+threads: 16
+nettyThreads: 32
+codec: !<org.redisson.codec.JsonJacksonCodec> {}
+transportMode: "NIO"
+```
+```
+#redisson.yml
+#redisson Single instance mode 单Redis节点模式
+singleServerConfig:
+  idleConnectionTimeout: 10000
+  connectTimeout: 10000
+  timeout: 3000
+  retryAttempts: 3
+  retryInterval: 1500
+  password: null
+  subscriptionsPerConnection: 5
+  clientName: null
+  address: "redis://127.0.0.1:6379"
+  subscriptionConnectionMinimumIdleSize: 1
+  subscriptionConnectionPoolSize: 50
+  connectionMinimumIdleSize: 24
+  connectionPoolSize: 64
+  database: 6
+  dnsMonitoringInterval: 5000
+threads: 16
+nettyThreads: 32
+codec: !<org.redisson.codec.JsonJacksonCodec> {}
+transportMode: "NIO"
+```
+```
+#redisson.yml
+#redisson Sentinel mode 哨兵模式
+sentinelServersConfig:
+  idleConnectionTimeout: 10000
+  connectTimeout: 10000
+  timeout: 3000
+  retryAttempts: 3
+  retryInterval: 1500
+  failedSlaveReconnectionInterval: 3000
+  failedSlaveCheckInterval: 60000
+  password: null
+  subscriptionsPerConnection: 5
+  clientName: null
+  loadBalancer: !<org.redisson.connection.balancer.RoundRobinLoadBalancer> {}
+  subscriptionConnectionMinimumIdleSize: 1
+  subscriptionConnectionPoolSize: 50
+  slaveConnectionMinimumIdleSize: 24
+  slaveConnectionPoolSize: 64
+  masterConnectionMinimumIdleSize: 24
+  masterConnectionPoolSize: 64
+  readMode: "SLAVE"
+  subscriptionMode: "SLAVE"
+  sentinelAddresses:
+  - "redis://127.0.0.1:26379"
+  - "redis://127.0.0.1:26389"
+  masterName: "mymaster"
+  database: 6
+threads: 16
+nettyThreads: 32
+codec: !<org.redisson.codec.JsonJacksonCodec> {}
+transportMode: "NIO"
+```
+```
+#redisson.yml
+#redisson Master slave mode 主从模式
+masterSlaveServersConfig:
+  idleConnectionTimeout: 10000
+  connectTimeout: 10000
+  timeout: 3000
+  retryAttempts: 3
+  retryInterval: 1500
+  failedSlaveReconnectionInterval: 3000
+  failedSlaveCheckInterval: 60000
+  password: null
+  subscriptionsPerConnection: 5
+  clientName: null
+  loadBalancer: !<org.redisson.connection.balancer.RoundRobinLoadBalancer> {}
+  subscriptionConnectionMinimumIdleSize: 1
+  subscriptionConnectionPoolSize: 50
+  slaveConnectionMinimumIdleSize: 24
+  slaveConnectionPoolSize: 64
+  masterConnectionMinimumIdleSize: 24
+  masterConnectionPoolSize: 64
+  readMode: "SLAVE"
+  subscriptionMode: "SLAVE"
+  slaveAddresses:
+  - "redis://127.0.0.1:6381"
+  - "redis://127.0.0.1:6380"
+  masterAddress: "redis://127.0.0.1:6379"
+  database: 6
+threads: 16
+nettyThreads: 32
+codec: !<org.redisson.codec.JsonJacksonCodec> {}
+transportMode: "NIO"
+```
+
 # 注入
 ```
+#redis注入
 @Autowired
 private RedisUtils redisUtils;
+```
+```
+#redisson注入
+@Autowired
+private RedissonClient redissonClient;
 ```
 
 # 测试
@@ -204,6 +385,33 @@ public void hashDecrease() {
     System.out.println("hashDecrease");
     double eee = redisUtils.hashDecrease("hashPut-ccc", "eee", -4.0);
     System.out.println(eee);
+}
+```
+
+# redisson 锁使用
+```
+public Object addLock() throws Throwable {
+    String lockStr = "lockStr";
+    Object result = null;
+    RReadWriteLock lock = redissonClient.getReadWriteLock(lockStr);
+    try {
+        //使用写锁，等待0秒，锁持续时间为5秒
+        boolean canLock = lock.writeLock().tryLock(0,5, TimeUnit.SECONDS);
+        if (canLock) {
+            try {
+                // 执行方法
+                result = 具体执行业务的方式
+            } finally {
+                lock.writeLock().unlock();
+            }
+        }
+    } catch (InterruptedException e) {
+        throw "抛出异常";
+    }
+    if(result == null){
+        return "错误的提示文案";
+    }
+    return result;
 }
 ```
 

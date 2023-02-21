@@ -29,8 +29,8 @@ import java.util.List;
  * @author huashijun
  */
 @Configuration
-@EnableConfigurationProperties(RedisProperties.class)
 @ConditionalOnClass(RedisUtils.class)
+@EnableConfigurationProperties(RedisProperties.class)
 public class RedisConfig {
 
     @Bean
@@ -95,7 +95,6 @@ public class RedisConfig {
     }
 
     @Bean
-    @ConditionalOnMissingBean
     public RedisUtils redisUtils(@Qualifier("redisTemplate") RedisTemplate<String,Object> redisTemplate){
         return new RedisUtils(redisTemplate);
     }
